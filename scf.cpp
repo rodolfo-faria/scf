@@ -148,9 +148,6 @@ void Int1e(const Ref<const VectorXd>& scaled_exp_1, const Ref<const VectorXd>& s
 			r_BP2 = pow(r_AB - r_AP,2);
 
 			S12 += (normalized_coef_1(i) * normalized_coef_2(j)) * OverlapInt(scaled_exp_1(i),scaled_exp_2(j),r_AB2);
-			cout << "normalized_coefficient_1 = " << normalized_coef_1[i];
-			cout << "normalized_coefficient_2 = " << normalized_coef_2[j];
-			cout << "S12 =  " << S12;
 
 			T11 += (normalized_coef_1(i) * normalized_coef_1(j)) * KineticInt(scaled_exp_1(i),scaled_exp_1(j),0.0e0);
 			T12 += (normalized_coef_1(i) * normalized_coef_2(j)) * KineticInt(scaled_exp_1(i),scaled_exp_2(j),r_AB2);
