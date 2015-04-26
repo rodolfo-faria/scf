@@ -51,13 +51,8 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 
-	cout << "R: " << r_AB << endl;
-	cout << "orbital exp_1: " << orb_exp_1 << endl;
-	cout << "orbital exp_2: " << orb_exp_2 << endl;
-
 	// basis set coefficients
 	VectorXd coefs(sto_ng);
-	//ArrayXd coefs(sto_ng);
 
 	if(sto_ng == 1) coefs <<      1.0;
 	if(sto_ng == 2) coefs << 0.678914, 0.430129;
@@ -66,7 +61,6 @@ int main(int argc, char* argv[])
 
 	//basis set exponents
 	VectorXd exps(sto_ng);
-	//ArrayXd exps(sto_ng);
 
 	if(sto_ng == 1) exps << 0.270950;
 	if(sto_ng == 2) exps << 0.151623, 0.851819;
@@ -80,20 +74,12 @@ int main(int argc, char* argv[])
 
 	VectorXd scaled_exp_1(sto_ng), scaled_exp_2(sto_ng);
 	VectorXd normalized_coef_1(sto_ng), normalized_coef_2(sto_ng);
-	//VectorXd normalized_coef_1 = VectorXd::Zero(sto_ng);
-	//ArrayXd scaled_exp_1(sto_ng), scaled_exp_2(sto_ng);
-	//ArrayXd normalized_coef_1(sto_ng), normalized_coef_2(sto_ng);
-
 
 	scaled_exp_1 = exps * pow(orb_exp_1,2);
 	scaled_exp_2 = exps * pow(orb_exp_2,2);
 
 	normalized_coef_1 =  pow(2.0e0/M_PI, 0.75e0) * scaled_exp_1.array().pow(0.75) * coefs.array();
 	normalized_coef_2 =  pow(2.0e0/M_PI, 0.75e0) * scaled_exp_2.array().pow(0.75) * coefs.array();
-
-	//cout << normalized_coef_1 * normalized_coef_2.transpose() << "\n";
-	//cout << scaled_exp_1 << endl;
-	//cout << scaled_exp_2 << endl;
 
 
 	Matrix2d S, T, V_A, V_B;
@@ -378,10 +364,6 @@ void SCF(Ref<MatrixXd> H, Ref<MatrixXd> X, Ref<MatrixXd> S, Tensor<double, 4>& T
 
         cout << "C_p: \n" << C_p << endl;
         cout << "E: \n" << E << endl;
-
-        //C = X * C_p;
-
-        //cout << "C: \n" << C << endl;
 
         P_old = P.eval();
 
