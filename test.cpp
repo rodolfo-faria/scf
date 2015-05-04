@@ -13,6 +13,9 @@
 #include <Eigen/SVD>
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/CXX11/Tensor>
+#include <chrono>
+#include <vector>
+#include "Read.h"
 
 using namespace Eigen;
 using namespace std;
@@ -35,6 +38,7 @@ void tnsr(Tensor<double, 4>& var)
 	var(1,0,0,0) = 56;
 }
 
+
 int main(int argc, char* argv[])
 {
 
@@ -43,48 +47,36 @@ int main(int argc, char* argv[])
 	double res = func(x);
 	cout << "trace is " << res << endl;
 
+	/*
 	Tensor<double, 4> t(2,2,2,2);
 	t.setConstant(2);
 	//cout << "dimension of t:" << endl << tnsr(t) << "\n\n";
 	cout << "Tensor: \n" << t << "\n";
 	tnsr(t);
 	cout << "Tensor: \n" << t << "\n";
+	*/
 
-	Matrix2f m = Matrix2f::Random();
-	m = (m + m.adjoint()).eval();
-	JacobiRotation<float> J;
-	J.makeJacobi(m, 0, 1);
-	cout << "Here is the matrix m:" << endl << m << endl;
-	m.applyOnTheLeft(0, 1, J.adjoint());
-	m.applyOnTheRight(0, 1, J);
-	cout << "Here is the matrix J' * m * J:" << endl << m << endl;
+	chrono::time_point<chrono::system_clock> start, end;
 
-	   EigenSolver<Matrix2f> eigensolver(m);
-	   if (eigensolver.info() != Success) abort();
-	   cout << "The eigenvalues of m are:\n" << eigensolver.eigenvalues() << endl;
-	   cout << "Here's a matrix whose columns are eigenvectors of A \n"
-	        << "corresponding to these eigenvalues:\n"
-	        << eigensolver.eigenvectors() << endl;
+	start = std::chrono::system_clock::now();
 
-	   Eigen::Matrix3d mmm;
-	   Eigen::Matrix3d rrr;
-	                   rrr <<  0.882966, -0.321461,  0.342102,
-	                           0.431433,  0.842929, -0.321461,
-	                          -0.185031,  0.431433,  0.882966;
-	                        // replace this with any rotation matrix
+	Read parse;
 
-	   mmm = rrr;
-
-	   Eigen::AngleAxisd aa(rrr);    // RotationMatrix to AxisAngle
-	   rrr = aa.toRotationMatrix();  // AxisAngle      to RotationMatrix
-
-	   std::cout <<     mmm << std::endl << std::endl;
-	   std::cout << rrr     << std::endl << std::endl;
-	   std::cout << rrr-mmm << std::endl << std::endl;
-	   std::cout << m.inverse() << std::endl << std::endl;
-	   std::cout << m.inverse().cwiseSqrt() << std::endl << std::endl;
+	MatrixXd Coord = parse.readMatrix(argv[1]);
 
 
+	//cout << parse.readMatrix(argv[1]) << endl;
+	cout << Coord << endl;
+
+	//MatrixXd Mat =  Map< MatrixXd > (data, dim/4, dim);
+	//cout << "data:\n" << Mat << endl;
+
+	//cout << Coord << endl;
+
+	end = chrono::system_clock::now();
+	chrono::duration<double> elapsed_seconds = end-start;
+
+	cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
 	return 0;
 

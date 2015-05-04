@@ -45,7 +45,7 @@ using namespace std;
    //Calculate two electrons integrals
    double TwoEIntegral(double A, double B, double C, double D, double r_AB2, double r_CD2, double r_PQ2);
 
-   void SCF(Ref<MatrixXd> H, Ref<MatrixXd> X, Ref<MatrixXd> S, Tensor<double, 4>& TT_ijkl);
+   void SCF(Ref<MatrixXd> H, Ref<MatrixXd> S, Tensor<double, 4>& TT_ijkl);
 
 
 int main(int argc, char* argv[])
@@ -102,23 +102,18 @@ int main(int argc, char* argv[])
 	//--------------------
 
 
-	Matrix2d H, X;
+	Matrix2d H;
 
 	H = T + V_A + V_B;
 
-	X(0,0) = 1.0e0/( sqrt(2.0e0*(1.0e0+S(0,1))) );
-	X(1,0) = X(0,0);
-	X(0,1) = 1.0e0/( sqrt(2.0e0*(1.0e0-S(0,1))) );
-	X(1,1) = -X(0,1);
-
-	cout << "X = \n"  << X << endl;
-
-	SCF(H, X, S, TT_ijkl);
+	SCF(H, S, TT_ijkl);
 
 
 	return 0;
 
 }
+
+
 
 void Int1e(const Ref<const VectorXd>& scaled_exp_1, const Ref<const VectorXd>& scaled_exp_2,
 		   const Ref<const VectorXd>& normalized_coef_1,const Ref<const VectorXd>& normalized_coef_2,
@@ -307,24 +302,42 @@ double TwoEIntegral(double A, double B, double C, double D, double r_AB2, double
 
 
 
-void SCF(Ref<MatrixXd> H, Ref<MatrixXd> X, Ref<MatrixXd> S, Tensor<double, 4>& TT_ijkl)
+void SCF(Ref<MatrixXd> H, Ref<MatrixXd> S, Tensor<double, 4>& TT_ijkl)
 {
 
-	const double critic = 1.0e-4; // convergence criterion for density matrix
-	const int maxit = 15; // maximum number of iteration
+	const int maxiter = 15; // maximum number of iteration
 	int iter; // iteration number
-	double delta; // energy difference between cycles
-	double electronic_energy;
+	double delta = 0.0e0; // energy difference between cycles
+	double electronic_energy = 0.0;
+	int nocc = 1;
 
-	Matrix2d F, F_p, G, C, C_p, P, P_old, E;
+	// In a more general case, these matrices
+	// 	have size of the # basis functions
+	Matrix2d F, F_p, G, C, C_p, P, E, P_old;
+
+	/* Calculate the symmetric transformation matrix
+	 	 by diagonalizing the overlap matrix S
+	 	 Note that .array() is needed to calculate the inverse
+	 	 of the coefficients and not the inverse matrix
+	---------------*/
+	SelfAdjointEigenSolver<MatrixXd> s_matrix(S);
+	VectorXd eigen_values = s_matrix.eigenvalues().cwiseSqrt().array().inverse();
+
+	MatrixXd Lambda = eigen_values.asDiagonal();
+	MatrixXd L_s = s_matrix.eigenvectors();
+
+	MatrixXd X = L_s * Lambda * L_s.transpose();
+	//---------------
+
+	Matrix2d Error_Matrix = Matrix2d::Zero();
 
 	iter = 0;
 
-	cout << maxit << endl;
-
-	while( iter < 3)
+	while( iter < maxiter )
 	{
 
+		// Form G by accessing the tensor which
+		// holds the 2e integrals
         for( int i = 0; i < 2; i++){
         	for( int j = 0; j < 2; j++){
                 G(i,j) = 0.0e0;
@@ -338,45 +351,60 @@ void SCF(Ref<MatrixXd> H, Ref<MatrixXd> X, Ref<MatrixXd> S, Tensor<double, 4>& T
             }
         }
 
-        cout << "G\n " << G << endl;
 
+        //DIIS attempt
+
+        if(iter > 2) {
+
+        	Error_Matrix = 	(F_p * P * S) - (S * P * F_p);
+        	//cout << "\nError_Matrix:\n" << Error_Matrix << endl;
+        }
+
+        //Form Fock marix
         F = H + G;
 
-        cout << "F:\n" << F << endl;
-        cout << "G:\n" << G << endl;
-
+        // Calculate the electronic energy
         electronic_energy = 0.5 * (P.cwiseProduct(H + F)).sum();
 
-        cout << "energy:\n" << electronic_energy << endl;
-
+        // Transform the Fock matrix
         F_p = X.transpose() * F * X;
 
-        cout << "F_p: \n" << F_p << endl;
-
-
+        // Diagonalize transformed Fock matrix
+        //------------
         SelfAdjointEigenSolver<MatrixXd> es(F_p);
 
         E = es.eigenvalues().asDiagonal();
         C_p = es.eigenvectors();
+        //------------
 
-        cout << "C_p: \n" << C_p << endl;
-        cout << "E: \n" << E << endl;
+        // Return the original Coefficient matrix
+        C = X * C_p;
 
-        P_old = P.eval();
+        // Save present density matrix before creating new one
+        P_old = P;
 
-        P = 2 * X * C_p * C_p.transpose() * X.transpose();
+        // Calculate new density matrix: 2 * C * C^{T}
+        // run over occupied orbitals only!
+        P = 2*C.leftCols(nocc) * C.leftCols(nocc).transpose();
 
-        cout << "P_old: \n" << P_old << endl;
-        cout << "P: \n" << P << endl;
+        // get deviation on the density matrix
+        delta = sqrt( (P - P_old).array().square().sum() / 4);
 
-        delta = 0.0e0;
-        delta = (P - P_old).array().square().sum();
+        cout << "ITERATION NUMBER: " << iter + 1 << endl;
+        cout << "\nF:\n" << F << endl;
+        cout << "\nG:\n" << G << endl;
+        cout << "\nF_p: \n" << F_p << endl;
+        cout << "\nC_p: \n" << C_p << endl;
+        cout << "\neigenvalues: \n" << E << endl;
+        cout << "\nC: \n" << C << endl;
+        cout << "\nP_old: \n" << P_old << endl;
+        cout << "\nP: \n" << P << endl;
+        cout << "\nenergy:\n" << electronic_energy << endl;
+        cout << "\n DELTA(CONVERGENCE OF DENSITY MATRIX) =  " << delta <<  endl << endl;
 
-        delta = sqrt(delta/4.0e0);
-        cout << "\n DELTA(CONVERGENCE OF DENSITY MATRIX) =  " << delta <<  endl;
+
 
         iter++;
-
 
 	}
 
